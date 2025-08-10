@@ -21,6 +21,7 @@ st.set_page_config(
     page_icon="🩻",
     layout="wide"
 )
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Prevent libiomp5.dylib errors
 
 # --- Title ---
 st.title("🩻 Medical X-ray Disease Classifier")
