@@ -2,10 +2,16 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = str(2**64)
 
-# Force Python 3.11
+# BLOCK Python 3.13 FORCEFULLY
 import sys
 if sys.version_info >= (3, 12):
-    raise RuntimeError("Python 3.11 required. Contact app owner.")
+    import streamlit as st
+    st.error("""
+    ❌ Wrong Python Version Detected (3.13)
+    This app requires Python 3.11
+    Contact support if you see this message
+    """)
+    st.stop()
 
 import cv2
 import streamlit as st
