@@ -2,7 +2,7 @@ streamlit
 torch
 torchvision
 albumentations
-opencv-python-headless==4.8.0
+opencv-python-headless==4.8.1.78
 matplotlib
 pillow
 numpy
