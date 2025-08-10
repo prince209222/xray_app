@@ -1,3 +1,1 @@
-python-3.12  # in runtime.txt
-torch==2.2.1
-torchvision==0.17.1
+python-3.11  # in runtime.txt
