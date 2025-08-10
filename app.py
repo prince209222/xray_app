@@ -146,18 +146,3 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Prediction failed: {str(e)}")
 
-# --- Footer ---
-st.markdown("---")
-st.caption("""
-*Note: This AI tool assists healthcare professionals but doesn't replace clinical diagnosis.  
-Model trained on ResNet34 with Albumentations preprocessing.*
-""")
-
-# --- Hidden Imports for Deployment ---
-try:
-    import cv2
-except ImportError:
-    import sys
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless==4.8.0.74"])
-    import cv2
