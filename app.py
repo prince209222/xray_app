@@ -1,6 +1,5 @@
 import streamlit as st
 import torch
-import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import albumentations as A
@@ -12,7 +11,10 @@ except ImportError:
     import subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
     import cv2
-
+import os
+os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = str(2**64)  # Prevent decompression bomb warnings
+import numpy as np
+np.__version__ = "1.26.4"  # Force NumPy 1.x compatibility
 # --- App Config ---
 st.set_page_config(
     page_title="Medical X-ray Classifier",
@@ -30,15 +32,22 @@ Upload a chest X-ray image to detect:
 - **COVID-19**
 """)
 
-# --- Transformation Pipeline (Your Code) ---
-def get_xray_transforms(img_size=256):
-    def force_grayscale(image, **kwargs):
-        """Convert to 1-channel grayscale if needed"""
-        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        elif len(image.shape) == 3 and image.shape[2] == 4:  # RGBA
-            image = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
-        return image
+# # --- Transformation Pipeline (Your Code) ---
+# def get_xray_transforms(img_size=256):
+#     def force_grayscale(image, **kwargs):
+#         """Convert to 1-channel grayscale if needed"""
+#         if len(image.shape) == 3 and image.shape[2] == 3:  # RGB
+#             image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+#         elif len(image.shape) == 3 and image.shape[2] == 4:  # RGBA
+#             image = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
+#         return image
+
+def force_grayscale(image, **kwargs):
+    """Convert to grayscale using PIL instead of OpenCV"""
+    if isinstance(image, np.ndarray):
+        if len(image.shape) == 3:
+            image = Image.fromarray(image).convert('L')
+    return np.array(image)
 
     base_transform = A.Compose([
         A.Lambda(image=force_grayscale),
