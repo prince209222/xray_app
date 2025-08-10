@@ -1,16 +1,15 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = str(2**64)
 
-# BLOCK Python 3.13 FORCEFULLY
+# BLOCK INCOMPATIBLE PYTHON VERSIONS
 import sys
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 10):
     import streamlit as st
     st.error("""
-    ❌ Wrong Python Version Detected (3.13)
-    This app requires Python 3.11
-    Contact support if you see this message
-    """)
+    ❌ Incompatible Python Version Detected
+    This app requires Python 3.9
+    Current version: {}
+    """.format(sys.version))
     st.stop()
 
 import cv2
