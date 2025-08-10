@@ -1,11 +1,17 @@
 import streamlit as st
 import torch
 import numpy as np
-import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+try:
+    import cv2
+except ImportError:
+    import sys
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
+    import cv2
 
 # --- App Config ---
 st.set_page_config(
