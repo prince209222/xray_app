@@ -1,17 +1,13 @@
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Prevent libiomp5 errors
-os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = str(2**64)  # Prevent decompression bombs
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = str(2**64)
 
+# Force Python 3.11
+import sys
+if sys.version_info >= (3, 12):
+    raise RuntimeError("Python 3.11 required. Contact app owner.")
 
-# --- Critical OpenCV Installation Check ---
-try:
-    import cv2
-except ImportError:
-    import sys
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless==4.8.0.74"])
-    import cv2  # Now guaranteed to work
-
+import cv2
 import streamlit as st
 import torch
 import numpy as np
