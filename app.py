@@ -1,149 +1,122 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
-# BLOCK INCOMPATIBLE PYTHON VERSIONS
+# --- Version Check ---
 import sys
-if sys.version_info >= (3, 10):
+if not (3, 9) <= sys.version_info < (3, 10):
     import streamlit as st
-    st.error("""
-    ❌ Incompatible Python Version Detected
-    This app requires Python 3.9
-    Current version: {}
-    """.format(sys.version))
+    st.error(f"❌ Python 3.9.x required (Detected: {sys.version})")
     st.stop()
 
-import cv2
-import streamlit as st
-import torch
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+# --- Pre-Flight Checks ---
+MODEL_PATH = 'models/medical_resnet34.pt'
+if not os.path.exists(MODEL_PATH):
+    import streamlit as st
+    st.error(f"❌ Model not found at: {os.path.abspath(MODEL_PATH)}")
+    st.stop()
 
-# --- App Config ---
-st.set_page_config(
-    page_title="Medical X-ray Classifier",
-    page_icon="🩻",
-    layout="wide"
-)
+# --- Imports with Try-Catch ---
+try:
+    import cv2
+    import streamlit as st
+    import torch
+    import numpy as np
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    import albumentations as A
+    from albumentations.pytorch import ToTensorV2
+except ImportError as e:
+    import streamlit as st
+    st.error(f"❌ Missing dependency: {str(e)}\nRun: pip install -r requirements.txt")
+    st.stop()
 
-# --- Title ---
-st.title("🩻 Medical X-ray Disease Classifier")
-st.markdown("""
-Upload a chest X-ray image to detect:
-- **Normal** 
-- **Viral Pneumonia** 
-- **Lung Opacity** 
-- **COVID-19**
-""")
+# --- Constants ---
+CLASSES = ['viral_pneumonia', 'covid', 'lung_opacity', 'normal']  # Model's output order
+DISPLAY_CONFIG = {
+    'normal': {'name': 'Normal', 'color': '#4CAF50'},
+    'viral_pneumonia': {'name': 'Viral Pneumonia', 'color': '#FFC107'},
+    'lung_opacity': {'name': 'Lung Opacity', 'color': '#FF5722'},
+    'covid': {'name': 'COVID-19', 'color': '#E91E63'}
+}
 
-# --- Transformation Pipeline ---
-def get_xray_transforms(img_size=256):
-    def force_grayscale(image, **kwargs):
-        """Convert to 1-channel grayscale using OpenCV"""
-        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        elif len(image.shape) == 3 and image.shape[2] == 4:  # RGBA
-            image = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
-        return image
-
-    return A.Compose([
-        A.Lambda(image=force_grayscale),
-        A.Resize(img_size, img_size),
-        A.Normalize(mean=[0.485], std=[0.229]),
-        ToTensorV2(),
-    ])
-
-# --- Model Loading ---
+# --- Model Loader ---
 @st.cache_resource
 def load_model():
-    # Initialize model
-    model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet34', pretrained=False)
-    
-    # Adjust first layer for 1-channel input
-    model.conv1 = torch.nn.Conv2d(
-        1, 64, kernel_size=7, stride=2, padding=3, bias=False
+    try:
+        model = torch.hub.load('pytorch/vision:v0.16.0', 'resnet34', pretrained=False)
+        model.conv1 = torch.nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        model.load_state_dict(torch.load(MODEL_PATH, map_location='cpu'))
+        model.eval()
+        return model
+    except Exception as e:
+        st.error(f"❌ Model loading failed. Technical details:\n{str(e)}")
+        st.stop()
+
+# --- Streamlit App ---
+def main():
+    st.set_page_config(
+        page_title="X-ray Classifier",
+        page_icon="🩻",
+        layout="wide"
     )
     
-    # Load trained weights
-    checkpoint = torch.load(
-        'models/medical_resnet34.pt',
-        map_location=torch.device('cpu')
-    )
-    model.load_state_dict(checkpoint['model_state_dict'])
-    model.eval()
-    return model
-
-# --- Prediction Function ---
-def predict(image):
-    transform = get_xray_transforms()
-    image_np = np.array(image)
-    tensor = transform(image=image_np)['image'].unsqueeze(0)
-    
-    with torch.no_grad():
-        logits = model(tensor)
-        probs = torch.nn.functional.softmax(logits, dim=1)[0]
-    
-    return probs.numpy()
-
-# --- Class Labels ---
-CLASSES = ['Normal', 'Viral Pneumonia', 'Lung Opacity', 'COVID-19']
-COLORS = ['#4CAF50', '#FFC107', '#FF5722', '#E91E63']  # Green, Amber, Deep Orange, Pink
-
-# --- Load Model ---
-try:
+    st.title("🩻 Medical X-ray Classifier")
     model = load_model()
-except Exception as e:
-    st.error(f"Failed to load model: {str(e)}")
-    st.stop()
-
-# --- Streamlit UI ---
-uploaded_file = st.file_uploader(
-    "**Upload X-ray Image**", 
-    type=["png", "jpg", "jpeg"],
-    help="Chest X-ray images only"
-)
-
-if uploaded_file is not None:
-    col1, col2 = st.columns([1, 2])
     
-    with col1:
-        st.subheader("Input Image")
-        image = Image.open(uploaded_file)
-        st.image(image, use_column_width=True)
+    with st.expander("ℹ️ How to use"):
+        st.markdown("""
+        1. Upload a chest X-ray (JPEG/PNG)
+        2. Wait for analysis (typically 3-5 seconds)
+        3. Review results
+        """)
     
-    with col2:
-        st.subheader("Prediction Results")
-        with st.spinner("Analyzing..."):
-            try:
-                # Get predictions
-                probabilities = predict(image)
-                
-                # Plot results
+    uploaded_file = st.file_uploader("Choose X-ray", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_file:
+        try:
+            img = Image.open(uploaded_file).convert('L')  # Force grayscale
+            img_np = np.array(img)
+            
+            # Prediction pipeline
+            transform = A.Compose([
+                A.Resize(256, 256),
+                A.Normalize(mean=[0.485], std=[0.229]),
+                ToTensorV2()
+            ])
+            
+            with torch.no_grad():
+                tensor = transform(image=img_np)['image'].unsqueeze(0)
+                probs = torch.nn.functional.softmax(model(tensor), dim=1)[0].numpy()
+            
+            # Display results
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.image(img, caption="Uploaded X-ray", use_column_width=True)
+            
+            with col2:
                 fig, ax = plt.subplots(figsize=(8, 4))
-                bars = ax.barh(
-                    CLASSES, 
-                    probabilities * 100,
-                    color=COLORS
-                )
-                
-                # Formatting
+                for i, cls in enumerate(CLASSES):
+                    ax.barh(
+                        DISPLAY_CONFIG[cls]['name'],
+                        probs[i] * 100,
+                        color=DISPLAY_CONFIG[cls]['color']
+                    )
                 ax.set_xlim(0, 100)
-                ax.set_xlabel('Confidence (%)')
-                ax.set_title('Disease Probability')
-                ax.bar_label(bars, fmt='%.1f%%', padding=5)
-                plt.tight_layout()
-                
+                ax.bar_label(ax.containers[0], fmt='%.1f%%')
                 st.pyplot(fig)
                 
-                # Highlight top prediction
-                max_idx = np.argmax(probabilities)
+                # Top prediction
+                max_idx = np.argmax(probs)
                 st.success(f"""
-                    **Most likely:**  
-                    :{COLORS[max_idx]}[**{CLASSES[max_idx]}**]  
-                    Confidence: **{probabilities[max_idx]*100:.1f}%**
+                    **Diagnosis:**  
+                    :{DISPLAY_CONFIG[CLASSES[max_idx]]['color']}[**{DISPLAY_CONFIG[CLASSES[max_idx]]['name']}**]  
+                    **Confidence:** {probs[max_idx]*100:.1f}%
                 """)
-            except Exception as e:
-                st.error(f"Prediction failed: {str(e)}")
+        
+        except Exception as e:
+            st.error(f"❌ Processing failed: {str(e)}")
+
+if __name__ == "__main__":
+    main()
 
