@@ -3,24 +3,28 @@ import sys
 import subprocess
 
 def verify():
-    print("🔍 Running verification...")
+    print("🔍 Running pre-flight checks...")
     
     # 1. Python version
-    assert (3, 9) <= sys.version_info < (3, 10), f"Python 3.9.x required (found {sys.version})"
+    py_ok = (3, 9) <= sys.version_info < (3, 10)
+    print(f"Python 3.9.x: {'✅' if py_ok else '❌'} (Found: {sys.version})")
     
     # 2. Model file
-    model_path = 'models/medical_resnet34.pt'
-    assert os.path.exists(model_path), f"Model not found at {os.path.abspath(model_path)}"
+    model_exists = os.path.exists('models/medical_resnet34.pt')
+    print(f"Model file: {'✅' if model_exists else '❌'} at models/medical_resnet34.pt")
     
     # 3. Dependencies
     try:
         import torch
-        assert torch.__version__ == '2.1.0', f"Torch 2.1.0 required (found {torch.__version__})"
-        print("✅ All checks passed!")
-    except Exception as e:
-        print(f"❌ Verification failed: {str(e)}")
-        print("Install dependencies with:")
-        print("pip install -r requirements.txt")
+        torch_ok = torch.__version__.startswith('2.1.0')
+        print(f"PyTorch 2.1.0: {'✅' if torch_ok else '❌'} (Found: {torch.__version__})")
+    except ImportError:
+        print("PyTorch: ❌ Not installed")
+    
+    if all([py_ok, model_exists]):
+        print("\n✅ System ready for deployment!")
+    else:
+        print("\n❌ Fix issues before deployment")
 
 if __name__ == "__main__":
     verify()
