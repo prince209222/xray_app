@@ -1,3 +1,3 @@
 [server]
-enableStaticServing = true
-maxUploadSize = 50
+enableStaticServing = true  # Allows model file access
+maxUploadSize = 50  # MB
