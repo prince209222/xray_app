@@ -1,0 +1,10 @@
+streamlit
+torch
+torchvision
+opencv-python-headless
+albumentations
+pillow
+seaborn
+numpy
+matplotlib
+protobuf
