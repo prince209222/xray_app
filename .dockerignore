@@ -1,8 +1,0 @@
-.git/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.DS_Store
-.env
-*.pt  # If you want to exclude model files (but you probably don't)
